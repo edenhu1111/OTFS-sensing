@@ -15,7 +15,7 @@ QAM_mod = 4;
 bitPerSymbol = log2(QAM_mod);
 
 eng_sqrt = (QAM_mod==2)+(QAM_mod~=2)*sqrt((QAM_mod-1)/6*(2^2)); % Average Power of a QAM symbol
-SNR_dB = 0:5:20; 
+SNR_dB = -10:5:20; 
 NFrame = 100;
 
 sigmaSquare = eng_sqrt^2 * exp(-SNR_dB*log(10)/10);
@@ -45,9 +45,12 @@ d = exp(1j*2*pi/(M*N)*dd.');
 % for iTarget = 1:length(targetRange)
 %    H = H + P^kp(iTarget)*D^lp(iTarget)*(randn + 1j*randn)/sqrt(2);
 % end
-errorRange = zeros(size(SNR_dB));
-errorVelo = zeros(size(SNR_dB));
+errorRange_TF = zeros(size(SNR_dB));
+errorVelo_TF = zeros(size(SNR_dB));
+errorRange_MF = zeros(size(SNR_dB));
+errorVelo_MF = zeros(size(SNR_dB));
 for ii = 1:length(SNR_dB)
+    fprintf('SNR = %d\n',SNR_dB(ii));
     for jj = 1:NFrame
         data_info_bit = randi([0,1],Nbitsperframe,1);
         data_temp = bi2de(reshape(data_info_bit,Nsymbolperframe,bitPerSymbol));
@@ -76,17 +79,31 @@ for ii = 1:length(SNR_dB)
         [I1,I2] = find(abs(rdm_tf)==MM);
         rangeEst = (I1-1)/(M*deltaf)*c/2;
         veloEst = (I2-1)/(N*10*T)*lambda/2;
-        errorRange(ii) = errorRange(ii) + (rangeEst - targetRange)^2/NFrame;
-        errorVelo(ii)  = errorVelo(ii)  + (veloEst  - targetSpeed)^2/NFrame;
-%         surf(abs(rdm_tf));
+        errorRange_TF(ii) = errorRange_TF(ii) + (rangeEst - targetRange)^2/NFrame;
+        errorVelo_TF(ii)  = errorVelo_TF(ii)  + (veloEst  - targetSpeed)^2/NFrame;
+% %         surf(abs(rdm_tf));
         %% SFFT
         y = SFFT(y_TF);
+        y_vec = reshape(y,[],1);
+        h_vec = ifft(conj(fft(x)).*fft(y_vec));
+        H_est = reshape(h_vec,M,N);
+        MM = max(abs(H_est),[],'all');
+        [I1,I2] = find(abs(H_est)==MM);
+        rangeEst = (I1-1)/(M*deltaf)*c/2;
+        veloEst = (I2-1)/(N*T)*lambda/2;
+        errorRange_MF(ii) = errorRange_MF(ii) + (rangeEst - targetRange)^2/NFrame;
+        errorVelo_MF(ii)  = errorVelo_MF(ii)  + (veloEst  - targetSpeed)^2/NFrame;        
     end
 end
-errorRange = sqrt(errorRange);
-errorVelo = sqrt(errorVelo);
+errorRange_TF = sqrt(errorRange_TF);
+errorVelo_TF = sqrt(errorVelo_TF);
+errorRange_MF = sqrt(errorRange_MF);
+errorVelo_MF = sqrt(errorVelo_MF);
 figure(1);
-semilogy(SNR_dB,errorRange);
+semilogy(SNR_dB,errorRange_TF);
+hold on;
+semilogy(SNR_dB,errorRange_MF);
 xlabel('SNR(dB)');
 ylabel('Range RMSE(m)');
-savefig('fig/range_rmse.fig');
+legend('Time Frequency Based Method','Match Filter Based Method');
+savefig('fig/range_rmse_comparison.fig');
