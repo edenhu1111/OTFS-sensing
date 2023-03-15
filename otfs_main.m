@@ -66,7 +66,7 @@ for ii = 1:length(SNR_dB)
         r = zeros(size(s));
         for iTarget = 1:length(targetRange)
             temp = s.*(d.^lp(iTarget));
-            r = r + (randn+1j*randn)*[temp(M*N-kp(iTarget)+1:M*N);temp(1:M*N-kp(iTarget))]/sqrt(2);
+            r = r + exp(1j*2*pi*rand)*[temp(M*N-kp(iTarget)+1:M*N);temp(1:M*N-kp(iTarget))];
         end
         r = r + (randn(size(r)) + 1j*randn(size(r)))*sqrt(sigmaSquare(ii)/2);
         %% Wigner Transform
@@ -84,6 +84,7 @@ for ii = 1:length(SNR_dB)
 % %         surf(abs(rdm_tf));
         %% SFFT
         y = SFFT(y_TF);
+        %% Sensing based on match filtering in DD domain
         y_vec = reshape(y,[],1);
         h_vec = ifft(conj(fft(x)).*fft(y_vec));
         H_est = reshape(h_vec,M,N);
